@@ -119,6 +119,7 @@ export default function GymTracker() {
   const [bodyMetrics, setBodyMetrics] = useState([]);
   const [metricForm,  setMetricForm]  = useState({});
   const [selMetric,   setSelMetric]   = useState("peso");
+  const [winW,        setWinW]        = useState(window.innerWidth);
   const timer    = useRef(null);
   const wuTimer  = useRef(null);
   const tickRef  = useRef(null);
@@ -127,6 +128,9 @@ export default function GymTracker() {
   useEffect(() => {
     try { const r = localStorage.getItem("gym"); if(r) setSessions(JSON.parse(r)); } catch(e){}
     try { const r = localStorage.getItem("gym-metrics"); if(r) setBodyMetrics(JSON.parse(r)); } catch(e){}
+    const onResize = () => setWinW(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const save        = s => { setSessions(s);    try { localStorage.setItem("gym",         JSON.stringify(s)); } catch(e){} };
@@ -218,6 +222,33 @@ export default function GymTracker() {
 
   const ex    = (wDay && activeExId) ? DAYS[wDay].exercises.find(e=>e.id===activeExId) : null;
   const total = wDay ? DAYS[wDay].exercises.length : 0;
+  const mob   = winW < 768;
+
+  // Desktop top nav (info views only)
+  const infoViews = ["home","history","progress","stats","medidas"];
+  const desktopNav = !mob && infoViews.includes(view) ? (
+    <div style={{background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"0 40px", display:"flex", alignItems:"center", gap:4, position:"sticky", top:0, zIndex:10}}>
+      <span style={{fontFamily:"monospace", fontWeight:700, color:C.orange, fontSize:15, marginRight:20, letterSpacing:1}}>AB</span>
+      {[["🏠 Inicio","home"],["📋 Historial","history"],["📈 Progreso","progress"],["📊 Estadísticas","stats"],["📏 Medidas","medidas"]].map(([l,v]) => (
+        <button key={v} onClick={()=>setView(v)}
+          style={{background:"none", border:"none", borderBottom:`2px solid ${view===v?C.orange:"transparent"}`, color:view===v?C.orange:C.muted, padding:"16px 14px 14px", cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:view===v?600:400, transition:"color 0.15s"}}>
+          {l}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  // Phone frame wrapper for workout views on desktop
+  const phoneWrap = (content) => !mob ? (
+    <div style={{background:"#050505", display:"flex", justifyContent:"center", alignItems:"flex-start", minHeight:"100vh", padding:"28px 20px"}}>
+      <div style={{width:400, background:C.bg, borderRadius:44, overflow:"hidden", border:"8px solid #1c1c1c", boxShadow:"0 40px 100px rgba(0,0,0,0.95)", minHeight:700}}>
+        {content}
+      </div>
+    </div>
+  ) : content;
+
+  // Responsive wrappers
+  const iW = { maxWidth: mob?520:1140, margin:"0 auto", padding: mob?"20px 16px":"28px 40px" };
 
   // ─── WARMUP ─────────────────────────────────────────────────────
   if (view === "warmup" && wDay) {
@@ -240,8 +271,8 @@ export default function GymTracker() {
     };
     const stopWuTimer = () => { clearInterval(wuTimer.current); setWuTimerIdx(null); setWuTimerLeft(0); };
 
-    return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"16px"}}>
+    return phoneWrap(
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <button onClick={()=>{ clearInterval(wuTimer.current); setView("home"); }}
             style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
@@ -310,56 +341,87 @@ export default function GymTracker() {
   // ─── HOME ───────────────────────────────────────────────────────
   if (view === "home") {
     const week = sessions.filter(s=>Date.now()-new Date(s.date).getTime()<7*864e5).length;
+    const stats = [["Sesiones totales",sessions.length],["Esta semana",week],["Día 1",sessions.filter(s=>s.day===1).length],["Día 2",sessions.filter(s=>s.day===2).length],["Día 3",sessions.filter(s=>s.day===3).length]];
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
-        <div style={{marginBottom:28}}>
-          <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Aesthetic Bear</div>
-          <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>Gym Tracker</div>
-        </div>
-
-        {sessions.length > 0 && (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:24}}>
-            {[["Sesiones",sessions.length],[`Esta semana`,week],[`Día 1`,sessions.filter(s=>s.day===1).length]].map(([l,v]) => (
-              <div key={l} style={{...card2,textAlign:"center"}}>
-                <div style={{fontSize:24,fontWeight:700,color:C.orange}}>{v}</div>
-                <div style={{fontSize:11,color:C.muted,marginTop:2}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Empezar entrenamiento</div>
-        {[1,2,3].map(day => {
-          const ds = sessions.filter(s=>s.day===day), last = ds[ds.length-1];
-          return (
-            <div key={day} onClick={()=>startWorkout(day)}
-              style={{...card,marginBottom:10,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"border-color 0.15s"}}
-              onMouseOver={e=>e.currentTarget.style.borderColor=C.orange}
-              onMouseOut={e=>e.currentTarget.style.borderColor=C.border}>
-              <div>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                  <span style={{background:C.orangeDim,color:C.orange,borderRadius:6,padding:"1px 8px",fontSize:12,fontWeight:600}}>DÍA {day}</span>
-                  <span style={{fontSize:13,fontWeight:500}}>{DAYS[day].name}</span>
-                </div>
-                <div style={{fontSize:12,color:C.muted}}>
-                  {last ? `${fmtDate(last.date)} · ${fmtDur(last.duration)}` : "Sin sesiones aún"}
-                </div>
-              </div>
-              <div style={{fontSize:12,color:C.muted,textAlign:"right"}}>
-                <div>{DAYS[day].exercises.length} ejercicios</div>
-                {last && <div style={{color:C.green,fontSize:11}}>{sessions.filter(s=>s.day===day).length} sesiones</div>}
-              </div>
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+        {desktopNav}
+        <div style={iW}>
+          {mob && (
+            <div style={{marginBottom:24}}>
+              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Aesthetic Bear</div>
+              <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>Gym Tracker</div>
             </div>
-          );
-        })}
+          )}
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:20}}>
-          {[["📋 Historial","history"],["📈 Progreso","progress"],["📊 Estadísticas","stats"],["📏 Medidas","medidas"]].map(([l,v]) => (
-            <button key={v} onClick={()=>setView(v)}
-              style={{...card2,border:`1px solid ${C.border}`,cursor:"pointer",color:C.text,fontSize:14,fontFamily:"inherit",padding:"14px"}}>
-              {l}
-            </button>
-          ))}
+          <div style={{display:"grid", gridTemplateColumns: mob?"1fr":"1fr 340px", gap:32, alignItems:"start"}}>
+            {/* Left: days */}
+            <div>
+              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Empezar entrenamiento</div>
+              {[1,2,3].map(day => {
+                const ds = sessions.filter(s=>s.day===day), last = ds[ds.length-1];
+                return (
+                  <div key={day} onClick={()=>startWorkout(day)}
+                    style={{...card,marginBottom:10,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"border-color 0.15s"}}
+                    onMouseOver={e=>e.currentTarget.style.borderColor=C.orange}
+                    onMouseOut={e=>e.currentTarget.style.borderColor=C.border}>
+                    <div>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                        <span style={{background:C.orangeDim,color:C.orange,borderRadius:6,padding:"1px 8px",fontSize:12,fontWeight:600}}>DÍA {day}</span>
+                        <span style={{fontSize:13,fontWeight:500}}>{DAYS[day].name}</span>
+                      </div>
+                      <div style={{fontSize:12,color:C.muted}}>
+                        {last ? `${fmtDate(last.date)} · ${fmtHour(last.date)}${last.endTime?" → "+fmtHour(last.endTime):""} · ${fmtDur(last.duration)}` : "Sin sesiones aún"}
+                      </div>
+                    </div>
+                    <div style={{fontSize:12,color:C.muted,textAlign:"right",flexShrink:0,marginLeft:12}}>
+                      <div>{DAYS[day].exercises.length} ejercicios</div>
+                      {last && <div style={{color:C.green,fontSize:11}}>{ds.length} sesiones</div>}
+                    </div>
+                  </div>
+                );
+              })}
+              {mob && (
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:20}}>
+                  {[["📋 Historial","history"],["📈 Progreso","progress"],["📊 Estadísticas","stats"],["📏 Medidas","medidas"]].map(([l,v]) => (
+                    <button key={v} onClick={()=>setView(v)}
+                      style={{...card2,border:`1px solid ${C.border}`,cursor:"pointer",color:C.text,fontSize:14,fontFamily:"inherit",padding:"14px"}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right: stats panel (desktop only) */}
+            {!mob && (
+              <div>
+                <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Resumen</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+                  {stats.map(([l,v]) => (
+                    <div key={l} style={{...card2,textAlign:"center"}}>
+                      <div style={{fontSize:22,fontWeight:700,color:C.orange}}>{v}</div>
+                      <div style={{fontSize:11,color:C.muted,marginTop:2}}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+                {sessions.length > 0 && (
+                  <div style={{...card2}}>
+                    <div style={{fontSize:11,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Última sesión</div>
+                    {(() => { const last = sessions[sessions.length-1]; return (
+                      <>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                          <span style={{background:C.orangeDim,color:C.orange,borderRadius:6,padding:"1px 8px",fontSize:12,fontWeight:600}}>DÍA {last.day}</span>
+                          <span style={{fontSize:13}}>{fmtDate(last.date)}</span>
+                        </div>
+                        <div style={{fontSize:12,color:C.muted}}>{fmtHour(last.date)}{last.endTime?" → "+fmtHour(last.endTime):""} · {fmtDur(last.duration)}</div>
+                        <div style={{fontSize:12,color:C.muted,marginTop:4}}>{last.exercises?.length} ejercicios completados</div>
+                      </>
+                    ); })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -373,8 +435,8 @@ export default function GymTracker() {
     // ── EXERCISE LIST ──
     if (!activeExId) {
       const done2 = completedIds.size;
-      return (
-        <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"16px"}}>
+      return phoneWrap(
+        <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"16px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <button onClick={()=>{ if(window.confirm("¿Abandonar la sesión?")){ clearInterval(timer.current); clearInterval(tickRef.current); setView("home"); }}}
               style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
@@ -444,8 +506,8 @@ export default function GymTracker() {
       const R=44, Circ=2*Math.PI*R;
       const dashOff = restTotal>0 ? Circ*(1-restLeft/restTotal) : 0;
       const ok = inputW && inputR;
-      return (
-        <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"16px"}}>
+      return phoneWrap(
+        <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"16px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <button onClick={skipExercise}
               style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
@@ -546,8 +608,8 @@ export default function GymTracker() {
 
   // ─── DONE ───────────────────────────────────────────────────────
   if (view === "done" && done) {
-    return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"32px 16px",textAlign:"center"}}>
+    return phoneWrap(
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"32px 16px",textAlign:"center"}}>
         <div style={{fontSize:52,marginBottom:8}}>🏆</div>
         <div style={{fontSize:28,fontWeight:700,color:C.green,marginBottom:4}}>¡Sesión completada!</div>
         <div style={{color:C.muted,marginBottom:28}}>
@@ -587,13 +649,16 @@ export default function GymTracker() {
   if (view === "history") {
     const sorted = [...sessions].reverse();
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+        {desktopNav}
+        <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700}}>Historial</div>
         </div>
+        <div style={{display:"grid", gridTemplateColumns: mob?"1fr":"1fr 1fr", gap:12}}>
         {sorted.length===0
-          ? <div style={{color:C.muted,textAlign:"center",marginTop:60}}>Aún no hay sesiones registradas</div>
+          ? <div style={{color:C.muted,textAlign:"center",marginTop:60,gridColumn:"1/-1"}}>Aún no hay sesiones registradas</div>
           : sorted.map(s => (
             <div key={s.id} style={{...card,marginBottom:10,overflow:"hidden",padding:0}}>
               <div onClick={()=>setExpanded(expanded===s.id?null:s.id)}
@@ -650,6 +715,8 @@ export default function GymTracker() {
             </div>
           ))
         }
+        </div>{/* end grid */}
+        </div>{/* end iW */}
       </div>
     );
   }
@@ -664,9 +731,11 @@ export default function GymTracker() {
     const up = parseFloat(change) >= 0;
 
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+        {desktopNav}
+        <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700}}>Progreso</div>
         </div>
 
@@ -718,6 +787,7 @@ export default function GymTracker() {
             <div style={{fontSize:14}}>{data.length===0?"Sin datos para este ejercicio aún":"Necesitas al menos 2 sesiones para ver la tendencia"}</div>
           </div>
         )}
+        </div>{/* end iW */}
       </div>
     );
   }
@@ -766,9 +836,11 @@ export default function GymTracker() {
       .map(([w,vol])=>({ week: fmtDate(w+"T12:00:00"), vol: Math.round(vol) }));
 
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+        {desktopNav}
+        <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700}}>Estadísticas</div>
         </div>
 
@@ -816,6 +888,7 @@ export default function GymTracker() {
         ) : (
           <div style={{...card,textAlign:"center",padding:"30px",color:C.muted,fontSize:14}}>Necesitas más sesiones para ver la tendencia</div>
         )}
+        </div>{/* end iW */}
       </div>
     );
   }
@@ -840,11 +913,15 @@ export default function GymTracker() {
     };
 
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:520,margin:"0 auto",padding:"24px 16px"}}>
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+        {desktopNav}
+        <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700}}>Medidas corporales</div>
         </div>
+        <div style={{display:"grid", gridTemplateColumns: mob?"1fr":"1fr 1fr", gap:32, alignItems:"start"}}>
+        <div>
 
         {/* Última medición */}
         {last && (
@@ -921,6 +998,9 @@ export default function GymTracker() {
             )}
           </>
         )}
+        </div>{/* right col */}
+        </div>{/* 2-col grid */}
+        </div>{/* iW */}
       </div>
     );
   }
