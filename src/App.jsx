@@ -120,6 +120,12 @@ export default function GymTracker() {
   const [metricForm,  setMetricForm]  = useState({});
   const [selMetric,   setSelMetric]   = useState("peso");
   const [winW,        setWinW]        = useState(window.innerWidth);
+  const [manDay,      setManDay]      = useState(1);
+  const [manDate,     setManDate]     = useState(new Date().toISOString().slice(0,10));
+  const [manStart,    setManStart]    = useState("09:00");
+  const [manEnd,      setManEnd]      = useState("10:00");
+  const [manSets,     setManSets]     = useState({});
+  const [manExpEx,    setManExpEx]    = useState(null);
   const timer    = useRef(null);
   const wuTimer  = useRef(null);
   const tickRef  = useRef(null);
@@ -190,6 +196,7 @@ export default function GymTracker() {
   };
 
   const skipRest = () => { clearInterval(timer.current); setResting(false); setSkipped(true); };
+  const doneRest = () => { clearInterval(timer.current); setResting(false); };
   const addRestTime = secs => { setRestLeft(p=>p+secs); setRestTotal(p=>p+secs); };
 
   const submitSet = () => {
@@ -390,6 +397,12 @@ export default function GymTracker() {
                   ))}
                 </div>
               )}
+              <div onClick={()=>{ setManDay(1); setManDate(new Date().toISOString().slice(0,10)); setManSets({}); setManExpEx(null); setView("manual"); }}
+                style={{marginTop:12,padding:"10px 16px",background:"none",border:`1px dashed ${C.border}`,borderRadius:10,cursor:"pointer",textAlign:"center",fontSize:13,color:C.muted}}
+                onMouseOver={e=>e.currentTarget.style.borderColor=C.orange}
+                onMouseOut={e=>e.currentTarget.style.borderColor=C.border}>
+                + Registrar sesión pasada
+              </div>
             </div>
 
             {/* Right: stats panel (desktop only) */}
@@ -541,10 +554,16 @@ export default function GymTracker() {
                   </button>
                 ))}
               </div>
-              <button onClick={skipRest}
-                style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 20px",cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
-                Saltar descanso
-              </button>
+              <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+                <button onClick={doneRest}
+                  style={{background:C.greenDim,border:`1px solid ${C.green}44`,color:C.green,borderRadius:8,padding:"6px 16px",cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:600}}>
+                  ✓ Ya descansé
+                </button>
+                <button onClick={skipRest}
+                  style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 16px",cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+                  Saltar
+                </button>
+              </div>
             </div>
           )}
 
@@ -1001,6 +1020,121 @@ export default function GymTracker() {
         </div>{/* right col */}
         </div>{/* 2-col grid */}
         </div>{/* iW */}
+      </div>
+    );
+  }
+
+  // ─── MANUAL ENTRY ───────────────────────────────────────────────
+  if (view === "manual") {
+    const exercises = DAYS[manDay].exercises;
+
+    const addSet = exId => setManSets(p => ({ ...p, [exId]: [...(p[exId]||[]), {weight:"", reps:""}] }));
+    const removeSet = (exId, i) => setManSets(p => ({ ...p, [exId]: p[exId].filter((_,j)=>j!==i) }));
+    const updateSet = (exId, i, field, val) => setManSets(p => {
+      const updated = [...(p[exId]||[])]; updated[i] = {...updated[i], [field]:val};
+      return {...p, [exId]: updated};
+    });
+
+    const saveManual = () => {
+      const startISO = new Date(`${manDate}T${manStart}:00`).toISOString();
+      const endISO   = new Date(`${manDate}T${manEnd}:00`).toISOString();
+      const dur = Math.max(0, Math.round((new Date(endISO)-new Date(startISO))/1000));
+      const exLogs = exercises
+        .filter(ex => manSets[ex.id]?.some(s=>s.reps))
+        .map(ex => ({
+          id: ex.id, name: ex.name,
+          sets: manSets[ex.id].filter(s=>s.reps).map(s=>({ weight:parseFloat(s.weight)||0, reps:parseInt(s.reps)||0, skipped:false }))
+        }));
+      if (!exLogs.length) return;
+      const sess = { id:Date.now(), date:startISO, endTime:endISO, day:manDay, duration:dur, warmup:[], exercises:exLogs, manual:true };
+      save([...sessions, sess]);
+      setView("home");
+    };
+
+    const totalSets = Object.values(manSets).reduce((a,s)=>a+(s?.filter(x=>x.reps).length||0),0);
+
+    return (
+      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+        {desktopNav}
+        <div style={iW}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
+            <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>←</button>
+            <div style={{fontSize:22,fontWeight:700}}>Registrar sesión pasada</div>
+          </div>
+
+          {/* Header form */}
+          <div style={{...card,marginBottom:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
+              <div>
+                <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Día</div>
+                <select value={manDay} onChange={e=>{setManDay(+e.target.value); setManSets({});}}
+                  style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}>
+                  {[1,2,3].map(d=><option key={d} value={d}>Día {d}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Inicio</div>
+                <input type="time" value={manStart} onChange={e=>setManStart(e.target.value)}
+                  style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"monospace",outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Fin</div>
+                <input type="time" value={manEnd} onChange={e=>setManEnd(e.target.value)}
+                  style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"monospace",outline:"none",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Fecha</div>
+              <input type="date" value={manDate} onChange={e=>setManDate(e.target.value)}
+                style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+
+          {/* Exercises */}
+          <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Ejercicios</div>
+          {exercises.map(ex => {
+            const sets = manSets[ex.id] || [];
+            const open = manExpEx === ex.id;
+            return (
+              <div key={ex.id} style={{...card,marginBottom:8,padding:0,overflow:"hidden"}}>
+                <div onClick={()=>{ setManExpEx(open?null:ex.id); if(!manSets[ex.id]) addSet(ex.id); }}
+                  style={{padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:500}}>{ex.name}</div>
+                    <div style={{fontSize:12,color:C.muted}}>{ex.sets} series × {ex.reps} · {ex.weight}kg ref.</div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    {sets.filter(s=>s.reps).length > 0 && <span style={{fontSize:12,color:C.green,fontWeight:600}}>{sets.filter(s=>s.reps).length} series</span>}
+                    <span style={{color:C.muted}}>{open?"▲":"▼"}</span>
+                  </div>
+                </div>
+                {open && (
+                  <div style={{borderTop:`1px solid ${C.border}`,padding:"12px 16px",background:C.surface2}}>
+                    {sets.map((s,i) => (
+                      <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr 32px",gap:8,marginBottom:8,alignItems:"center"}}>
+                        <input type="number" step="0.5" placeholder={`${ex.weight}kg`} value={s.weight} onChange={e=>updateSet(ex.id,i,"weight",e.target.value)}
+                          style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px",color:C.text,fontSize:16,fontFamily:"monospace",textAlign:"center",outline:"none",width:"100%",boxSizing:"border-box"}}/>
+                        <input type="number" placeholder="reps" value={s.reps} onChange={e=>updateSet(ex.id,i,"reps",e.target.value)}
+                          style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px",color:C.text,fontSize:16,fontFamily:"monospace",textAlign:"center",outline:"none",width:"100%",boxSizing:"border-box"}}/>
+                        <button onClick={()=>removeSet(ex.id,i)}
+                          style={{background:"none",border:"none",color:C.red,cursor:"pointer",fontSize:18,padding:0,fontFamily:"inherit"}}>×</button>
+                      </div>
+                    ))}
+                    <button onClick={()=>addSet(ex.id)}
+                      style={{background:"none",border:`1px dashed ${C.border}`,borderRadius:8,padding:"6px",width:"100%",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+                      + Añadir serie
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <button onClick={saveManual} disabled={!totalSets}
+            style={{width:"100%",marginTop:16,background:totalSets?C.orange:C.surface2,border:"none",borderRadius:10,padding:"14px",color:totalSets?"#000":C.muted,fontFamily:"inherit",fontWeight:700,fontSize:15,cursor:totalSets?"pointer":"not-allowed"}}>
+            {totalSets ? `Guardar sesión (${totalSets} series)` : "Añade al menos una serie"}
+          </button>
+        </div>
       </div>
     );
   }
