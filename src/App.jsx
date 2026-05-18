@@ -126,6 +126,11 @@ export default function GymTracker() {
   const [manEnd,      setManEnd]      = useState("10:00");
   const [manSets,     setManSets]     = useState({});
   const [manExpEx,    setManExpEx]    = useState(null);
+  const [currentRIR,  setCurrentRIR]  = useState(null);
+  const [exNote,      setExNote]      = useState("");
+  const [progAlerts,  setProgAlerts]  = useState({});
+  const [quickWt,     setQuickWt]     = useState(false);
+  const [quickWtVal,  setQuickWtVal]  = useState("");
   const timer    = useRef(null);
   const wuTimer  = useRef(null);
   const tickRef  = useRef(null);
@@ -170,6 +175,7 @@ export default function GymTracker() {
     setActiveExId(id); setSetIdx(0); setCurSets([]);
     setInputW(lastW(wDay, id, ex.weight)); setInputR("");
     setResting(false); setSkipped(false);
+    setCurrentRIR(null); setExNote("");
   };
 
   const skipExercise = () => {
@@ -199,19 +205,36 @@ export default function GymTracker() {
   const doneRest = () => { clearInterval(timer.current); setResting(false); };
   const addRestTime = secs => { setRestLeft(p=>p+secs); setRestTotal(p=>p+secs); };
 
+  const checkProgression = (exId, sets) => {
+    const exDef = DAYS[wDay]?.exercises.find(e=>e.id===exId);
+    if (!exDef) return null;
+    const upper = parseInt(exDef.reps.match(/(\d+)$/)?.[1]);
+    if (!upper) return null;
+    if (!sets.every(s=>s.reps>=upper)) return null;
+    const prev = sessions.filter(s=>s.day===wDay && s.exercises?.some(e=>e.id===exId));
+    if (prev.length>=1) {
+      const prevEx = prev[prev.length-1].exercises.find(e=>e.id===exId);
+      if (!prevEx?.sets.every(s=>s.reps>=upper)) return null;
+    }
+    return exDef.next;
+  };
+
   const submitSet = () => {
     const w = parseFloat(inputW)||0, r = parseInt(inputR)||0;
     if (!r) return;
     const ex = DAYS[wDay].exercises.find(e=>e.id===activeExId);
-    const newSet = { weight:w, reps:r, skipped };
-    setSkipped(false);
+    const newSet = { weight:w, reps:r, skipped, rir:currentRIR };
+    setSkipped(false); setCurrentRIR(null);
     const updSets = [...curSets, newSet];
     const lastSet = setIdx+1 >= ex.sets;
     if (lastSet) {
-      const exLog = { id:ex.id, name:ex.name, sets:updSets };
+      const alert = checkProgression(ex.id, updSets);
+      if (alert) setProgAlerts(p=>({...p, [ex.id]: alert}));
+      const exLog = { id:ex.id, name:ex.name, sets:updSets, note:exNote.trim()||undefined };
       const updLogs = [...sessLogs, exLog];
       setSessLogs(updLogs);
       setActiveExId(null); setSetIdx(0); setCurSets([]);
+      setExNote("");
       clearInterval(timer.current); setResting(false);
     } else {
       setCurSets(updSets); setSetIdx(setIdx+1);
@@ -355,7 +378,7 @@ export default function GymTracker() {
         <div style={iW}>
           {mob && (
             <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Aesthetic Bear</div>
+              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Gym Biuld Bear</div>
               <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>Gym Tracker</div>
             </div>
           )}
@@ -418,7 +441,7 @@ export default function GymTracker() {
                   ))}
                 </div>
                 {sessions.length > 0 && (
-                  <div style={{...card2}}>
+                  <div style={{...card2,marginTop:12}}>
                     <div style={{fontSize:11,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Última sesión</div>
                     {(() => { const last = sessions[sessions.length-1]; return (
                       <>
@@ -432,6 +455,31 @@ export default function GymTracker() {
                     ); })()}
                   </div>
                 )}
+                <div style={{...card2,marginTop:12}}>
+                  <div style={{fontSize:11,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>⚖️ Peso corporal rápido</div>
+                  {quickWt ? (
+                    <div style={{display:"flex",gap:8}}>
+                      <input type="number" step="0.1" value={quickWtVal} onChange={e=>setQuickWtVal(e.target.value)} placeholder="kg" autoFocus
+                        style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px",color:C.text,fontSize:18,fontFamily:"monospace",textAlign:"center",outline:"none"}}/>
+                      <button onClick={()=>{ if(!quickWtVal) return; const e={id:Date.now(),date:new Date().toISOString(),peso:quickWtVal}; saveMetrics([...bodyMetrics,e]); setQuickWtVal(""); setQuickWt(false); }}
+                        style={{background:C.orange,border:"none",borderRadius:8,padding:"8px 14px",color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>OK</button>
+                      <button onClick={()=>{setQuickWt(false);setQuickWtVal("");}}
+                        style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                    </div>
+                  ) : (
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:13,color:C.muted}}>
+                        {bodyMetrics.filter(m=>m.peso).slice(-1)[0]
+                          ? `Último: ${bodyMetrics.filter(m=>m.peso).slice(-1)[0].peso}kg`
+                          : "Sin datos aún"}
+                      </span>
+                      <button onClick={()=>setQuickWt(true)}
+                        style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 14px",color:C.text,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+                        + Registrar
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -469,6 +517,16 @@ export default function GymTracker() {
           </div>
 
           <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Elige ejercicio</div>
+
+          {Object.entries(progAlerts).length > 0 && (
+            <div style={{marginBottom:12}}>
+              {Object.entries(progAlerts).map(([id,next]) => (
+                <div key={id} style={{background:C.greenDim+"55",border:`1px solid ${C.green}44`,borderRadius:8,padding:"8px 12px",marginBottom:6,fontSize:13,color:C.green}}>
+                  🔥 <strong>{DAYS[wDay].exercises.find(e=>e.id===id)?.name}</strong> — listo para subir a <strong>{next}</strong>
+                </div>
+              ))}
+            </div>
+          )}
 
           {allExercises.map(exercise => {
             const done = completedIds.has(exercise.id);
@@ -574,10 +632,29 @@ export default function GymTracker() {
               <span>⏱ {fmtTime(ex.rest)} descanso</span>
             </div>
             {ex.note && <div style={{fontSize:12,color:C.yellow,marginBottom:6}}>💡 {ex.note}</div>}
-            <div style={{display:"flex",gap:16,fontSize:12,marginTop:8}}>
+            <div style={{display:"flex",gap:16,fontSize:12,marginTop:6,marginBottom:6}}>
               <span style={{color:C.muted}}>Prox: <span style={{color:C.green,fontWeight:600}}>{ex.next}</span></span>
               <span style={{color:C.muted}}>4 sem: <span style={{color:C.yellow,fontWeight:600}}>{ex.w4}</span></span>
             </div>
+            {(() => {
+              const prev = sessions.filter(s=>s.day===wDay && s.exercises?.some(e=>e.id===activeExId));
+              if (!prev.length) return null;
+              const prevEx = prev[prev.length-1].exercises.find(e=>e.id===activeExId);
+              if (!prevEx?.sets?.length) return null;
+              return (
+                <div style={{borderTop:`1px solid ${C.border}`,paddingTop:8,marginTop:4}}>
+                  <div style={{fontSize:11,color:C.muted,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Última vez ({fmtDate(prev[prev.length-1].date)})</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {prevEx.sets.map((s,i) => (
+                      <span key={i} style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 9px",fontSize:12,fontFamily:"monospace",color:C.muted}}>
+                        {s.weight}×{s.reps}{s.rir!=null?` RIR${s.rir}`:""}
+                      </span>
+                    ))}
+                    {prevEx.note && <span style={{fontSize:11,color:C.yellow,alignSelf:"center"}}>"{prevEx.note}"</span>}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {curSets.length > 0 && (
@@ -600,7 +677,7 @@ export default function GymTracker() {
               <div style={{fontSize:12,color:C.orange,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:14}}>
                 Serie {setIdx+1} de {ex.sets}
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                 {[["Peso (kg)",inputW,setInputW,"0.5"],["Reps",inputR,setInputR,"1"]].map(([lbl,val,set,step]) => (
                   <div key={lbl}>
                     <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>{lbl}</div>
@@ -609,6 +686,24 @@ export default function GymTracker() {
                   </div>
                 ))}
               </div>
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>RIR (reps en recámara)</div>
+                <div style={{display:"flex",gap:6}}>
+                  {[0,1,2,3,4].map(r => (
+                    <button key={r} onClick={()=>setCurrentRIR(currentRIR===r?null:r)}
+                      style={{flex:1,padding:"7px 0",background:currentRIR===r?C.orange:C.surface2,border:`1px solid ${currentRIR===r?C.orange:C.border}`,borderRadius:8,color:currentRIR===r?"#000":C.muted,fontFamily:"inherit",fontWeight:currentRIR===r?700:400,fontSize:14,cursor:"pointer"}}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {setIdx+1 === ex.sets && (
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Nota del ejercicio (opcional)</div>
+                  <input type="text" value={exNote} onChange={e=>setExNote(e.target.value)} placeholder="PR, técnica, dolor, etc."
+                    style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+              )}
               {skipped && <div style={{fontSize:12,color:C.red,background:C.redDim,borderRadius:6,padding:"5px 10px",marginBottom:10}}>⚠ Descanso saltado — anótalo</div>}
               <button onClick={submitSet} disabled={!ok}
                 style={{width:"100%",background:ok?C.orange:C.surface2,border:"none",borderRadius:10,padding:"14px",color:ok?"#000":C.muted,fontFamily:"inherit",fontWeight:700,fontSize:15,cursor:ok?"pointer":"not-allowed",transition:"all 0.15s",marginBottom:8}}>
@@ -673,7 +768,17 @@ export default function GymTracker() {
         <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
           <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
-          <div style={{fontSize:22,fontWeight:700}}>Historial</div>
+          <div style={{fontSize:22,fontWeight:700,flex:1}}>Historial</div>
+          {sessions.length > 0 && (
+            <button onClick={()=>{
+              const rows=[["Fecha","Hora inicio","Hora fin","Día","Ejercicio","Serie","Peso (kg)","Reps","RIR","Descanso saltado","Nota"]];
+              sessions.forEach(s=>{ s.exercises?.forEach(ex=>{ ex.sets.forEach((set,i)=>{ rows.push([fmtDate(s.date),s.date?fmtHour(s.date):"",s.endTime?fmtHour(s.endTime):"",`Día ${s.day}`,ex.name,i+1,set.weight,set.reps,set.rir??"",set.skipped?"sí":"no",i===0?(ex.note||""):""]); }); }); });
+              const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+              const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="gym-tracker.csv"; a.click();
+            }} style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 14px",color:C.muted,cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+              ⬇ CSV
+            </button>
+          )}
         </div>
         <div style={{display:"grid", gridTemplateColumns: mob?"1fr":"1fr 1fr", gap:12}}>
         {sorted.length===0
@@ -721,11 +826,12 @@ export default function GymTracker() {
                               borderRadius:6,padding:"2px 9px",fontSize:12,fontFamily:"monospace",
                               color:set.skipped?C.red:C.text
                             }}>
-                              {set.weight}×{set.reps}
+                              {set.weight}×{set.reps}{set.rir!=null?` RIR${set.rir}`:""}
                             </span>
                           ))}
                           <span style={{fontSize:11,color:C.green,fontWeight:600}}>max {maxW}kg</span>
                         </div>
+                        {ex.note && <div style={{fontSize:11,color:C.yellow,marginTop:4}}>💬 {ex.note}</div>}
                       </div>
                     );
                   })}
@@ -907,12 +1013,33 @@ export default function GymTracker() {
         ) : (
           <div style={{...card,textAlign:"center",padding:"30px",color:C.muted,fontSize:14}}>Necesitas más sesiones para ver la tendencia</div>
         )}
+        {/* Semanas de entrenamiento */}
+        <div style={{marginTop:24}}>
+          <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Semanas de entrenamiento (últimas 8)</div>
+          {(() => {
+            const getWS = iso => { const d=new Date(iso),dow=d.getDay(),diff=d.getDate()-dow+(dow===0?-6:1); return new Date(d.getFullYear(),d.getMonth(),diff).toISOString().slice(0,10); };
+            const weeks = {}; sessions.forEach(s=>{ const ws=getWS(s.date); if(!weeks[ws]) weeks[ws]=[]; if(!weeks[ws].includes(s.day)) weeks[ws].push(s.day); });
+            const sorted = Object.entries(weeks).sort(([a],[b])=>a.localeCompare(b)).slice(-8);
+            if (!sorted.length) return <div style={{color:C.muted,fontSize:13}}>Sin datos aún</div>;
+            return sorted.map(([ws,days]) => (
+              <div key={ws} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                <span style={{fontSize:12,color:C.muted,minWidth:70}}>{fmtDate(ws)}</span>
+                <div style={{display:"flex",gap:5,flex:1}}>
+                  {[1,2,3].map(d => (
+                    <div key={d} style={{flex:1,height:22,borderRadius:5,background:days.includes(d)?C.orange:C.surface2,border:`1px solid ${days.includes(d)?C.orange:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:days.includes(d)?"#000":C.muted,fontWeight:days.includes(d)?600:400}}>
+                      {days.includes(d)?`D${d}`:""}
+                    </div>
+                  ))}
+                </div>
+                <span style={{fontSize:11,color:days.length===3?C.green:C.muted,fontWeight:600,minWidth:30}}>{days.length}/3</span>
+              </div>
+            ));
+          })()}
+        </div>
         </div>{/* end iW */}
       </div>
     );
-  }
-
-  // ─── MEDIDAS ─────────────────────────────────────────────────────
+  } ─────────────────────────────────────────────────────
   if (view === "medidas") {
     const last = bodyMetrics[bodyMetrics.length-1];
     const first = bodyMetrics[0];
