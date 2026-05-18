@@ -280,7 +280,7 @@ export default function GymTracker() {
   // Responsive wrappers
   const iW = { maxWidth: mob?520:1140, margin:"0 auto", padding: mob?"20px 16px":"28px 40px" };
 
-  // ─── WARMUP ─────────────────────────────────────────────────────
+  // === WARMUP ===
   if (view === "warmup" && wDay) {
     const items = DAYS[wDay].warmup;
     const allDone = items.every((_,i) => wuChecked.has(i));
@@ -368,7 +368,7 @@ export default function GymTracker() {
     );
   }
 
-  // ─── HOME ───────────────────────────────────────────────────────
+  // === HOME ===
   if (view === "home") {
     const week = sessions.filter(s=>Date.now()-new Date(s.date).getTime()<7*864e5).length;
     const stats = [["Sesiones totales",sessions.length],["Esta semana",week],["Día 1",sessions.filter(s=>s.day===1).length],["Día 2",sessions.filter(s=>s.day===2).length],["Día 3",sessions.filter(s=>s.day===3).length]];
@@ -378,7 +378,7 @@ export default function GymTracker() {
         <div style={iW}>
           {mob && (
             <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Gym Biuld Bear</div>
+              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Bear Gym Tracker</div>
               <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>Gym Tracker</div>
             </div>
           )}
@@ -488,12 +488,12 @@ export default function GymTracker() {
     );
   }
 
-  // ─── WORKOUT ────────────────────────────────────────────────────
+  // === WORKOUT ===
   if (view === "workout" && wDay) {
     const completedIds = new Set(sessLogs.map(l=>l.id));
     const allExercises = DAYS[wDay].exercises;
 
-    // ── EXERCISE LIST ──
+    // -- EXERCISE LIST --
     if (!activeExId) {
       const done2 = completedIds.size;
       return phoneWrap(
@@ -572,7 +572,7 @@ export default function GymTracker() {
       );
     }
 
-    // ── ACTIVE EXERCISE ──
+    // -- ACTIVE EXERCISE --
     if (ex) {
       const R=44, Circ=2*Math.PI*R;
       const dashOff = restTotal>0 ? Circ*(1-restLeft/restTotal) : 0;
@@ -720,7 +720,7 @@ export default function GymTracker() {
     }
   }
 
-  // ─── DONE ───────────────────────────────────────────────────────
+  // === DONE ===
   if (view === "done" && done) {
     return phoneWrap(
       <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"32px 16px",textAlign:"center"}}>
@@ -759,7 +759,7 @@ export default function GymTracker() {
     );
   }
 
-  // ─── HISTORY ────────────────────────────────────────────────────
+  // === HISTORY ===
   if (view === "history") {
     const sorted = [...sessions].reverse();
     return (
@@ -846,7 +846,7 @@ export default function GymTracker() {
     );
   }
 
-  // ─── PROGRESS ───────────────────────────────────────────────────
+  // === PROGRESS ===
   if (view === "progress") {
     const data = progressData(selEx);
     const exInfo = ALL_EX.find(e=>e.id===selEx);
@@ -917,7 +917,7 @@ export default function GymTracker() {
     );
   }
 
-  // ─── STATS ──────────────────────────────────────────────────────
+  // === STATS ===
   if (view === "stats") {
     // Racha
     const days = [...new Set(sessions.map(s=>s.date.slice(0,10)))].sort();
@@ -1039,7 +1039,8 @@ export default function GymTracker() {
         </div>{/* end iW */}
       </div>
     );
-  } ─────────────────────────────────────────────────────
+  }
+  // === MEDIDAS ===
   if (view === "medidas") {
     const last = bodyMetrics[bodyMetrics.length-1];
     const first = bodyMetrics[0];
@@ -1151,7 +1152,7 @@ export default function GymTracker() {
     );
   }
 
-  // ─── MANUAL ENTRY ───────────────────────────────────────────────
+  // === MANUAL ENTRY ===
   if (view === "manual") {
     const exercises = DAYS[manDay].exercises;
 
