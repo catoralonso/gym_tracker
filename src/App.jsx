@@ -143,7 +143,24 @@ export default function GymTracker() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-
+  
+  useEffect(() => {
+    const handleBack = (e) => {
+      if (["workout","warmup"].includes(view)) {
+        e.preventDefault();
+        if (window.confirm("¿Abandonar la sesión? Se perderá el progreso.")) {
+          clearInterval(timer.current);
+          clearInterval(tickRef.current);
+          setView("home");
+        } else {
+          window.history.pushState(null, "", window.location.href);
+        }
+      }
+    };
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handleBack);
+    return () => window.removeEventListener("popstate", handleBack);
+  }, [view]);
   const save        = s => { setSessions(s);    try { localStorage.setItem("gym",         JSON.stringify(s)); } catch(e){} };
   const saveMetrics = m => { setBodyMetrics(m); try { localStorage.setItem("gym-metrics", JSON.stringify(m)); } catch(e){} };
 
@@ -1053,7 +1070,7 @@ export default function GymTracker() {
     const logMetrics = () => {
       const hasAny = METRICS.some(m=>metricForm[m.id]!=null&&metricForm[m.id]!=="");
       if (!hasAny) return;
-      const entry = { id:Date.now(), date:new Date().toISOString(), ...metricForm };
+      const entry = { id:Date.now(), date:new Date(metricForm._date||new Date()).toISOString(), ...metricForm };
       const updated = [...bodyMetrics, entry];
       saveMetrics(updated);
       setMetricForm({});
@@ -1089,6 +1106,12 @@ export default function GymTracker() {
         {/* Registrar medición */}
         <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Registrar medición</div>
         <div style={{...card,marginBottom:20}}>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Fecha</div>
+            <input type="date" value={metricForm._date||new Date().toISOString().slice(0,10)} 
+              onChange={e=>setMetricForm(p=>({...p,_date:e.target.value}))}
+              style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+          </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
             {METRICS.map(m=>(
               <div key={m.id}>
