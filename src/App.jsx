@@ -664,6 +664,21 @@ export default function GymTracker() {
             })()}
           </div>
 
+          {/* RIR */}
+          <div style={{...card2,marginBottom:10}}>
+            <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:8}}>
+              RIR — reps en recámara{currentRIR!=null && <span style={{color:C.accentHi,marginLeft:8}}>({currentRIR} seleccionado)</span>}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {[0,1,2,3,4].map(r => (
+                <button key={r} onClick={()=>setCurrentRIR(currentRIR===r?null:r)}
+                  style={{flex:1,padding:"10px 0",background:currentRIR===r?C.orange:C.surface,border:`2px solid ${currentRIR===r?C.orange:C.border}`,borderRadius:10,color:currentRIR===r?"#fff":C.muted,fontFamily:FONT,fontWeight:700,fontSize:18,cursor:"pointer",transition:"all 0.15s",boxShadow:currentRIR===r?`0 0 12px ${C.orange}66`:"none"}}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {curSets.length > 0 && (
             <div style={{...card2,marginBottom:10}}>
               <div style={{fontSize:11,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Series completadas</div>
@@ -706,27 +721,11 @@ export default function GymTracker() {
                 {setIdx+1<ex.sets ? "Completar serie →" : "Fin ejercicio ✓"}
               </button>
               <button onClick={skipExercise}
-                style={{width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:10,padding:"10px",color:C.muted,fontFamily:FONT,fontSize:13,cursor:"pointer",marginBottom:80}}>
+                style={{width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:10,padding:"10px",color:C.muted,fontFamily:FONT,fontSize:13,cursor:"pointer",marginBottom:8}}>
                 Saltar ejercicio (máquina ocupada)
               </button>
             </div>
           )}
-
-          {/* RIR sticky bar - always visible during active exercise */}
-          <div style={{position:"sticky",bottom:0,left:0,right:0,background:C.bg,borderTop:`1px solid ${C.border}`,padding:"10px 16px 14px",backdropFilter:"blur(12px)"}}>
-            <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:8,textAlign:"center"}}>
-              ¿Cuántas reps te quedan en el tanque? <span style={{color:currentRIR!=null?C.accentHi:C.muted}}>{currentRIR!=null?`RIR ${currentRIR} seleccionado`:"sin seleccionar"}</span>
-            </div>
-            <div style={{display:"flex",gap:6}}>
-              {[0,1,2,3,4].map(r => (
-                <button key={r} onClick={()=>setCurrentRIR(currentRIR===r?null:r)}
-                  style={{flex:1,padding:"10px 0",background:currentRIR===r?C.orange:C.surface2,border:`2px solid ${currentRIR===r?C.orange:C.border}`,borderRadius:10,color:currentRIR===r?"#fff":C.muted,fontFamily:FONT,fontWeight:700,fontSize:18,cursor:"pointer",transition:"all 0.15s",boxShadow:currentRIR===r?`0 0 12px ${C.orange}66`:"none"}}>
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
       );
     }
   }
