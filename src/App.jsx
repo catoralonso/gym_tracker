@@ -385,7 +385,7 @@ export default function GymTracker() {
         <div style={iW}>
           {mob && (
             <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Aesthetic Bear</div>
+              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Alonso Arredondo</div>
               <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>Gym Tracker</div>
             </div>
           )}
