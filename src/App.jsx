@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
+// Load Syne font
+const fontLink = document.createElement("link");
+fontLink.rel = "stylesheet";
+fontLink.href = "https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap";
+document.head.appendChild(fontLink);
+
 const DAYS = {
-  1: { name: "Heavy Chest + Back + Arms",
+  1: { name: "Pecho, Espalda y Brazos",
     warmup: [
       { label: "5 min bike o remo",              timer: 300 },
       { label: "Shoulder circles + band pull-aparts" },
@@ -10,51 +16,45 @@ const DAYS = {
       { label: "Deep squat hold 30 seg",         timer: 30  },
     ],
     exercises: [
-    { id:"bench_press",   name:"Bench Press",               sets:4, reps:"4-6/6-10", weight:42.5, rest:150, note:"1 top set @50kg · 3 backoff @42.5kg", next:"52.5/45kg", w4:"55/47.5kg" },
-    { id:"pullups",       name:"Pull Ups Asistidas",        sets:4, reps:"6-10",     weight:25,   rest:120, note:"25kg asistencia",                     next:"20kg asist", w4:"15kg asist", isAssist:true },
-    { id:"incline_db1",   name:"Incline DB Press",          sets:3, reps:"8-10",     weight:14,   rest:90,  next:"16kg",    w4:"16-18kg" },
-    { id:"cable_row",     name:"Remo Sentado",               sets:4, reps:"8",        weight:45,   rest:90,  next:"50kg",    w4:"55kg" },
-    { id:"ez_curl",       name:"Bar EZ Curl",                sets:3, reps:"10",       weight:25,   rest:60,  next:"27.5kg",  w4:"30kg" },
-    { id:"triceps_push",  name:"Triceps Pushdown",           sets:3, reps:"12",       weight:50,   rest:60,  next:"55kg",    w4:"60kg" },
-    { id:"pec_fly1",      name:"Pec Fly",                    sets:3, reps:"12-15",    weight:45,   rest:45,  next:"50kg",    w4:"50-55kg" },
+    { id:"bench_press",   name:"Press de Banca",           sets:4, reps:"6-8",    weight:42.5, rest:150, note:"Solo si la muñeca está cómoda y estable",     next:"45kg x 6-8",         w4:"45kg x 8" },
+    { id:"cable_row",     name:"Remo Sentado",             sets:4, reps:"8-12",   weight:45,   rest:90,  note:"Agarre neutro si resulta más cómodo",         next:"50kg",               w4:"55kg" },
+    { id:"incline_db1",   name:"Incline DB Press",         sets:3, reps:"8-10",   weight:32,   rest:90,  note:"Si molesta muñeca cambiar a press sentado",   next:"32kg x 10",          w4:"32kg x 10 + RIR" },
+    { id:"pec_fly1",      name:"Pec Fly",                  sets:3, reps:"10-15",  weight:50,   rest:45,  note:"Recorrido controlado, sin estirar de más",    next:"55kg",               w4:"60kg" },
+    { id:"ez_curl",       name:"Curl EZ",                  sets:3, reps:"10-12",  weight:25,   rest:60,  note:"Mantener 30kg solo si el agarre no molesta",  next:"25kg x 12",          w4:"25kg x 12 + RIR" },
+    { id:"triceps_push",  name:"Tríceps en Polea",         sets:3, reps:"12-15",  weight:60,   rest:60,  note:"Muñeca alineada con el antebrazo",            next:"60kg con 3 RIR",     w4:"60kg" },
   ]},
-  2: { name: "Shoulders + Arms + Legs",
+  2: { name: "Hombros, Piernas y Glúteos",
     warmup: [
       { label: "5 min bike",       timer: 300 },
       { label: "Hip mobility" },
       { label: "Shoulder mobility" },
     ],
     exercises: [
-    { id:"shoulder_press",name:"Seated DB Shoulder Press",  sets:4, reps:"8-10",    weight:14, rest:120, next:"16kg",    w4:"18kg" },
-    { id:"lateral_raise", name:"Lateral Raises",            sets:4, reps:"15",      weight:8,  rest:45,  next:"9-10kg",  w4:"10-12kg" },
-    { id:"rear_delt",     name:"Rear Delt Fly",             sets:3, reps:"15",      weight:9,  rest:45,  next:"10-12kg", w4:"12-14kg" },
-    { id:"hack_squat",     name:"Hack Squat",                 sets:4, reps:"10-12",      weight:40, rest:90,  next:"50kg",   w4:"60kg" },
-    { id:"leg_curl",      name:"Leg Curl",                  sets:3, reps:"12",      weight:30, rest:60,  next:"35kg",    w4:"40kg" },
-    { id:"glute_kickback",     name:"Glute Kickback",                 sets:4, reps:"15-20",      weight:25, rest:45,  next:"30kg",   w4:"35kg" },
-    { id:"abductor",      name:"Abductor Machine",                  sets:3, reps:"20",      weight:30, rest:45,  next:"35kg",    w4:"40kg" },
-    { id:"hammer_curl",   name:"Hammer Curl",               sets:3, reps:"12",      weight:9,  rest:60,  next:"10-12kg", w4:"12-14kg" },
-    { id:"curl_3t",       name:"Curl 3 Tiempos",            sets:3, reps:"tempo",   weight:8,  rest:45,  next:"9-10kg",  w4:"10-12kg" },
-    { id:"calf_raise",    name:"Standing Calf Raise",       sets:3, reps:"15",      weight:45, rest:45,  next:"50-55kg", w4:"60kg" },
+    { id:"shoulder_press",name:"Press Hombros Máquina",   sets:3, reps:"8-12",     weight:25, rest:120, note:"Agarre cómodo, sin tensión en muñeca",     next:"25kg x 8",              w4:"25kg x 12" },
+    { id:"lateral_raise", name:"Elevación Lateral",       sets:3, reps:"12-20",    weight:16,  rest:45, note:"Máquina o variante que no moleste",        next:"16kg x 15",             w4:"16kg x 20" },
+    { id:"rear_delt",     name:"Pájaros / Deltoides Post",sets:3, reps:"12-20",    weight:18,  rest:45,  note:"Controlar la bajada",                     next:"20kg",                  w4:"20kg x 15-20" },
+    { id:"hack_squat",    name:"Hack Squat 45°",          sets:3, reps:"10-12",    weight:40, rest:90,  note:"Empezar con carga claramente controlable", next:"40kg x 12",             w4:"40kg x 12 + RIR" },
+    { id:"glute_kickback",name:"Glute Kickback",          sets:3, reps:"12-20",    weight:35, rest:45,  note:"Sin arquear la zona lumbar",               next:"35kg x 12",             w4:"35kg x 12 + RIR" },
+    { id:"abductor",      name:"Abductor Machine",        sets:3, reps:"15-25",    weight:45, rest:45,  note:"Pausa breve al abrir",                     next:"45kg x 20",             w4:"45kg x 25" },
+    { id:"leg_curl",      name:"Curl Femoral",            sets:2, reps:"15-20",    weight:30, rest:60,  note:"Mantenimiento de isquiotibiales",          next:"30kg x 15-20",          w4:"35kg" },
+    { id:"calf_raise",    name:"Standing Calf Raise",     sets:3, reps:"15",       weight:45, rest:45,                                                   next:"50kg",                  w4:"55kg" },
   ]},
-  3: { name: "Chest Pump + Back + Arms",
+  3: { name: "Pecho, Espalda y Brazos",
     warmup: [
       { label: "5 min incline walk / bike / row", timer: 300 },
       { label: "Band pull-aparts ×20" },
       { label: "Shoulder circles" },
       { label: "Light chest stretch" },
-      { label: "2 warm-up sets incline press" },
       { label: "Hanging bar 20-30 seg",           timer: 25  },
     ],
     exercises: [
-    { id:"incline_db3",   name:"Incline Bench (mancuernas)",sets:4, reps:"10",      weight:15, rest:120, next:"17.5kg",  w4:"20kg" },
-    { id:"chest_machine", name:"Chest Press Machine",       sets:3, reps:"12",      weight:45, rest:75,  next:"50kg",    w4:"55-60kg" },
-    { id:"lat_pulldown",  name:"Lat Pulldown",              sets:3, reps:"10",      weight:55, rest:75,  next:"60kg",    w4:"65-70kg" },
-    { id:"remo_uni",      name:"Remo Unilateral",           sets:4, reps:"10",      weight:14, rest:75,  next:"16-18kg", w4:"20kg" },
-    { id:"incline_curl",  name:"Incline DB Curl",           sets:3, reps:"12",      weight:16, rest:60,  next:"18kg",    w4:"18-20kg" },
-    { id:"fly_inv",       name:"Fly Invertido",             sets:3, reps:"12-15",   weight:45, rest:52,  next:"50kg",    w4:"50-55kg" },
-    { id:"fly_pecho",     name:"Fly Pecho",                 sets:3, reps:"12-15",   weight:45, rest:52,  next:"50kg",    w4:"50-55kg" },
-    { id:"dips_asist",    name:"Dips Asistidos",            sets:3, reps:"10-12",   weight:25, rest:75,  note:"25kg asistencia", next:"20kg asist", w4:"10-15kg asist", isAssist:true },
-    { id:"face_pull",     name:"Face Pull",                 sets:3, reps:"20",      weight:0,  rest:40,  note:"Control total, ligero", next:"+5kg", w4:"moderado" },
+    { id:"incline_db3",   name:"Incline Press Bench",     sets:4, reps:"10-12",   weight:30, rest:120, note:"Pendiente de la muñeca",                    next:"30kg x 12",         w4:"30kg x 12 + RIR" },
+    { id:"lat_pulldown",  name:"Lat Pulldown",            sets:3, reps:"10",      weight:50, rest:75,  note:"Agarre neutro si no provoca tensión",       next:"50kg x 12",         w4:"55kg" },      
+    { id:"remo_uni",      name:"Remo Unilateral",         sets:4, reps:"8-10",    weight:25, rest:75,  note:"Partir de los 25kg registrados",            next:"25kg x 10",         w4:"30kg" },
+    { id:"fly_inv",       name:"Fly Invertido",           sets:3, reps:"10-15",   weight:35, rest:52,  note:"35kg solo si controlas el recorrido",       next:"35kg x 12",         w4:"40kg" },
+    { id:"pec_fly2",      name:"Pec Fly",                 sets:3, reps:"10-15",   weight:50, rest:45,  note:"Recorrido controlado, sin estirar de más",  next:"55kg",              w4:"60kg" },
+    { id:"bicep_curl",    name:"3-Way DB Curl",           sets:3, reps:"10-15",   weight:18, rest:60,  note:"Sin balanceo y sin tensión de muñeca",      next:"18kg x 10",         w4:"18kg x 12" },
+    { id:"triceps_push3", name:"Tríceps en Polea",        sets:3, reps:"12-15",   weight:60, rest:60,  note:"Muñeca alineada con el antebrazo",          next:"60kg con 3 RIR",    w4:"60kg" },
   ]}
 };
 
@@ -77,25 +77,30 @@ const fmtDur  = s => s>=3600?`${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m
 const fmtHour = iso => new Date(iso).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
 
 const C = {
-  bg:        "#0d0d0d",
-  surface:   "#161616",
-  surface2:  "#1e1e1e",
-  border:    "#2a2a2a",
-  borderHi:  "#3a3a3a",
-  text:      "#f0f0f0",
-  muted:     "#777",
-  orange:    "#f97316",
-  orangeHi:  "#fb923c",
-  orangeDim: "#7c3100",
+  bg:        "#0a0a0f",
+  surface:   "#13111a",
+  surface2:  "#1c1828",
+  border:    "#2a2440",
+  borderHi:  "#3d3460",
+  text:      "#f1f0ff",
+  muted:     "#6b6880",
+  orange:    "#7c3aed",
+  orangeHi:  "#a855f7",
+  orangeDim: "#2e1065",
   green:     "#22c55e",
   greenDim:  "#166534",
   red:       "#ef4444",
   redDim:    "#7f1d1d",
-  yellow:    "#fbbf24",
+  yellow:    "#eab308",
+  yellowHi:  "#fbbf24",
+  accent:    "#7c3aed",
+  accentHi:  "#a855f7",
+  accentDim: "#2e1065",
 };
 
-const card  = { background:C.surface,  border:`1px solid ${C.border}`,  borderRadius:12, padding:"14px 18px" };
-const card2 = { background:C.surface2, border:`1px solid ${C.border}`,  borderRadius:10, padding:"12px 16px" };
+const FONT = "'Syne', system-ui, sans-serif";
+const card  = { background:C.surface,  border:`1px solid ${C.border}`,  borderRadius:14, padding:"14px 18px" };
+const card2 = { background:C.surface2, border:`1px solid ${C.border}`,  borderRadius:12, padding:"12px 16px" };
 
 export default function GymTracker() {
   const [view,        setView]        = useState("home");
@@ -145,24 +150,7 @@ export default function GymTracker() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  
-  useEffect(() => {
-    const handleBack = (e) => {
-      if (["workout","warmup"].includes(view)) {
-        e.preventDefault();
-        if (window.confirm("¿Abandonar la sesión? Se perderá el progreso.")) {
-          clearInterval(timer.current);
-          clearInterval(tickRef.current);
-          setView("home");
-        } else {
-          window.history.pushState(null, "", window.location.href);
-        }
-      }
-    };
-    window.history.pushState(null, "", window.location.href);
-    window.addEventListener("popstate", handleBack);
-    return () => window.removeEventListener("popstate", handleBack);
-  }, [view]);
+
   const save        = s => { setSessions(s);    try { localStorage.setItem("gym",         JSON.stringify(s)); } catch(e){} };
   const saveMetrics = m => { setBodyMetrics(m); try { localStorage.setItem("gym-metrics", JSON.stringify(m)); } catch(e){} };
 
@@ -280,7 +268,7 @@ export default function GymTracker() {
       <span style={{fontFamily:"monospace", fontWeight:700, color:C.orange, fontSize:15, marginRight:20, letterSpacing:1}}>AB</span>
       {[["🏠 Inicio","home"],["📋 Historial","history"],["📈 Progreso","progress"],["📊 Estadísticas","stats"],["📏 Medidas","medidas"]].map(([l,v]) => (
         <button key={v} onClick={()=>setView(v)}
-          style={{background:"none", border:"none", borderBottom:`2px solid ${view===v?C.orange:"transparent"}`, color:view===v?C.orange:C.muted, padding:"16px 14px 14px", cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:view===v?600:400, transition:"color 0.15s"}}>
+          style={{background:"none", border:"none", borderBottom:`2px solid ${view===v?C.orange:"transparent"}`, color:view===v?C.orange:C.muted, padding:"16px 14px 14px", cursor:"pointer", fontSize:13, fontFamily:FONT, fontWeight:view===v?600:400, transition:"color 0.15s"}}>
           {l}
         </button>
       ))}
@@ -321,10 +309,10 @@ export default function GymTracker() {
     const stopWuTimer = () => { clearInterval(wuTimer.current); setWuTimerIdx(null); setWuTimerLeft(0); };
 
     return phoneWrap(
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"16px"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,padding:"16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <button onClick={()=>{ clearInterval(wuTimer.current); setView("home"); }}
-            style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+            style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:FONT}}>
             ✕ Salir
           </button>
           <span style={{background:C.orangeDim,color:C.orange,borderRadius:8,padding:"2px 12px",fontSize:13,fontWeight:600}}>DÍA {wDay}</span>
@@ -356,10 +344,10 @@ export default function GymTracker() {
                       {running ? (
                         <>
                           <span style={{fontFamily:"monospace",fontSize:16,fontWeight:700,color:C.orange}}>{fmtTime(wuTimerLeft)}</span>
-                          <button onClick={stopWuTimer} style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.muted,borderRadius:6,padding:"2px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>Parar</button>
+                          <button onClick={stopWuTimer} style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.muted,borderRadius:6,padding:"2px 10px",cursor:"pointer",fontSize:12,fontFamily:FONT}}>Parar</button>
                         </>
                       ) : (
-                        <button onClick={()=>startWuTimer(i)} style={{background:"none",border:`1px solid ${C.orange}55`,color:C.orange,borderRadius:6,padding:"3px 12px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+                        <button onClick={()=>startWuTimer(i)} style={{background:"none",border:`1px solid ${C.orange}55`,color:C.orange,borderRadius:6,padding:"3px 12px",cursor:"pointer",fontSize:12,fontFamily:FONT}}>
                           ▶ {fmtTime(item.timer)}
                         </button>
                       )}
@@ -376,7 +364,7 @@ export default function GymTracker() {
           background: allDone ? C.orange : C.surface,
           border: allDone ? "none" : `1px solid ${C.border}`,
           color: allDone ? "#000" : C.text,
-          borderRadius:10,padding:"14px",fontFamily:"inherit",fontWeight:700,fontSize:15,cursor:"pointer",transition:"all 0.2s"
+          borderRadius:10,padding:"14px",fontFamily:FONT,fontWeight:700,fontSize:15,cursor:"pointer",transition:"all 0.2s"
         }}>
           {allDone ? "¡Listo! Empezar entrenamiento →" : "Empezar entrenamiento →"}
         </button>
@@ -392,12 +380,12 @@ export default function GymTracker() {
     const week = sessions.filter(s=>Date.now()-new Date(s.date).getTime()<7*864e5).length;
     const stats = [["Sesiones totales",sessions.length],["Esta semana",week],["Día 1",sessions.filter(s=>s.day===1).length],["Día 2",sessions.filter(s=>s.day===2).length],["Día 3",sessions.filter(s=>s.day===3).length]];
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,minHeight:"100vh"}}>
         {desktopNav}
         <div style={iW}>
           {mob && (
             <div style={{marginBottom:24}}>
-              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Bear Gym Tracker</div>
+              <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Aesthetic Bear</div>
               <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>Gym Tracker</div>
             </div>
           )}
@@ -433,7 +421,7 @@ export default function GymTracker() {
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:20}}>
                   {[["📋 Historial","history"],["📈 Progreso","progress"],["📊 Estadísticas","stats"],["📏 Medidas","medidas"]].map(([l,v]) => (
                     <button key={v} onClick={()=>setView(v)}
-                      style={{...card2,border:`1px solid ${C.border}`,cursor:"pointer",color:C.text,fontSize:14,fontFamily:"inherit",padding:"14px"}}>
+                      style={{...card2,border:`1px solid ${C.border}`,cursor:"pointer",color:C.text,fontSize:14,fontFamily:FONT,padding:"14px"}}>
                       {l}
                     </button>
                   ))}
@@ -481,9 +469,9 @@ export default function GymTracker() {
                       <input type="number" step="0.1" value={quickWtVal} onChange={e=>setQuickWtVal(e.target.value)} placeholder="kg" autoFocus
                         style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px",color:C.text,fontSize:18,fontFamily:"monospace",textAlign:"center",outline:"none"}}/>
                       <button onClick={()=>{ if(!quickWtVal) return; const e={id:Date.now(),date:new Date().toISOString(),peso:quickWtVal}; saveMetrics([...bodyMetrics,e]); setQuickWtVal(""); setQuickWt(false); }}
-                        style={{background:C.orange,border:"none",borderRadius:8,padding:"8px 14px",color:"#000",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>OK</button>
+                        style={{background:C.orange,border:"none",borderRadius:8,padding:"8px 14px",color:"#000",fontWeight:700,cursor:"pointer",fontFamily:FONT}}>OK</button>
                       <button onClick={()=>{setQuickWt(false);setQuickWtVal("");}}
-                        style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.muted,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                        style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px",color:C.muted,cursor:"pointer",fontFamily:FONT}}>✕</button>
                     </div>
                   ) : (
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -493,7 +481,7 @@ export default function GymTracker() {
                           : "Sin datos aún"}
                       </span>
                       <button onClick={()=>setQuickWt(true)}
-                        style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 14px",color:C.text,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+                        style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 14px",color:C.text,cursor:"pointer",fontSize:13,fontFamily:FONT}}>
                         + Registrar
                       </button>
                     </div>
@@ -516,10 +504,10 @@ export default function GymTracker() {
     if (!activeExId) {
       const done2 = completedIds.size;
       return phoneWrap(
-        <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"16px"}}>
+        <div style={{fontFamily:FONT,background:C.bg,color:C.text,padding:"16px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <button onClick={()=>{ if(window.confirm("¿Abandonar la sesión?")){ clearInterval(timer.current); clearInterval(tickRef.current); setView("home"); }}}
-              style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+              style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:FONT}}>
               ✕ Salir
             </button>
             <span style={{background:C.orangeDim,color:C.orange,borderRadius:8,padding:"2px 12px",fontSize:13,fontWeight:600}}>DÍA {wDay}</span>
@@ -583,7 +571,7 @@ export default function GymTracker() {
 
           {sessLogs.length > 0 && (
             <button onClick={()=>finishSession(sessLogs)}
-              style={{width:"100%",marginTop:16,background:C.orange,border:"none",borderRadius:10,padding:"14px",color:"#000",fontFamily:"inherit",fontWeight:700,fontSize:15,cursor:"pointer"}}>
+              style={{width:"100%",marginTop:16,background:C.orange,border:"none",borderRadius:10,padding:"14px",color:"#000",fontFamily:FONT,fontWeight:700,fontSize:15,cursor:"pointer"}}>
               🏁 Finalizar sesión ({done2}/{total} ejercicios)
             </button>
           )}
@@ -597,10 +585,10 @@ export default function GymTracker() {
       const dashOff = restTotal>0 ? Circ*(1-restLeft/restTotal) : 0;
       const ok = inputW && inputR;
       return phoneWrap(
-        <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"16px"}}>
+        <div style={{fontFamily:FONT,background:C.bg,color:C.text,padding:"16px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <button onClick={skipExercise}
-              style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+              style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:FONT}}>
               ← Lista
             </button>
             <span style={{background:C.orangeDim,color:C.orange,borderRadius:8,padding:"2px 12px",fontSize:13,fontWeight:600}}>DÍA {wDay}</span>
@@ -626,18 +614,18 @@ export default function GymTracker() {
               <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:10}}>
                 {[30,60].map(s => (
                   <button key={s} onClick={()=>addRestTime(s)}
-                    style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.orange,borderRadius:8,padding:"4px 14px",cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:600}}>
+                    style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.orange,borderRadius:8,padding:"4px 14px",cursor:"pointer",fontSize:13,fontFamily:FONT,fontWeight:600}}>
                     +{fmtTime(s)}
                   </button>
                 ))}
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"center"}}>
                 <button onClick={doneRest}
-                  style={{background:C.greenDim,border:`1px solid ${C.green}44`,color:C.green,borderRadius:8,padding:"6px 16px",cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:600}}>
+                  style={{background:C.greenDim,border:`1px solid ${C.green}44`,color:C.green,borderRadius:8,padding:"6px 16px",cursor:"pointer",fontSize:13,fontFamily:FONT,fontWeight:600}}>
                   ✓ Ya descansé
                 </button>
                 <button onClick={skipRest}
-                  style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 16px",cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+                  style={{background:C.surface2,border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 16px",cursor:"pointer",fontSize:13,fontFamily:FONT}}>
                   Saltar
                 </button>
               </div>
@@ -705,35 +693,39 @@ export default function GymTracker() {
                   </div>
                 ))}
               </div>
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>RIR (reps en recámara)</div>
-                <div style={{display:"flex",gap:6}}>
-                  {[0,1,2,3,4].map(r => (
-                    <button key={r} onClick={()=>setCurrentRIR(currentRIR===r?null:r)}
-                      style={{flex:1,padding:"7px 0",background:currentRIR===r?C.orange:C.surface2,border:`1px solid ${currentRIR===r?C.orange:C.border}`,borderRadius:8,color:currentRIR===r?"#000":C.muted,fontFamily:"inherit",fontWeight:currentRIR===r?700:400,fontSize:14,cursor:"pointer"}}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </div>
               {setIdx+1 === ex.sets && (
                 <div style={{marginBottom:12}}>
                   <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Nota del ejercicio (opcional)</div>
                   <input type="text" value={exNote} onChange={e=>setExNote(e.target.value)} placeholder="PR, técnica, dolor, etc."
-                    style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                    style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
                 </div>
               )}
               {skipped && <div style={{fontSize:12,color:C.red,background:C.redDim,borderRadius:6,padding:"5px 10px",marginBottom:10}}>⚠ Descanso saltado — anótalo</div>}
               <button onClick={submitSet} disabled={!ok}
-                style={{width:"100%",background:ok?C.orange:C.surface2,border:"none",borderRadius:10,padding:"14px",color:ok?"#000":C.muted,fontFamily:"inherit",fontWeight:700,fontSize:15,cursor:ok?"pointer":"not-allowed",transition:"all 0.15s",marginBottom:8}}>
+                style={{width:"100%",background:ok?C.orange:C.surface2,border:"none",borderRadius:10,padding:"14px",color:ok?"#fff":C.muted,fontFamily:FONT,fontWeight:700,fontSize:15,cursor:ok?"pointer":"not-allowed",transition:"all 0.15s",marginBottom:8}}>
                 {setIdx+1<ex.sets ? "Completar serie →" : "Fin ejercicio ✓"}
               </button>
               <button onClick={skipExercise}
-                style={{width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:10,padding:"10px",color:C.muted,fontFamily:"inherit",fontSize:13,cursor:"pointer"}}>
+                style={{width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:10,padding:"10px",color:C.muted,fontFamily:FONT,fontSize:13,cursor:"pointer",marginBottom:80}}>
                 Saltar ejercicio (máquina ocupada)
               </button>
             </div>
           )}
+
+          {/* RIR sticky bar - always visible during active exercise */}
+          <div style={{position:"sticky",bottom:0,left:0,right:0,background:C.bg,borderTop:`1px solid ${C.border}`,padding:"10px 16px 14px",backdropFilter:"blur(12px)"}}>
+            <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:8,textAlign:"center"}}>
+              ¿Cuántas reps te quedan en el tanque? <span style={{color:currentRIR!=null?C.accentHi:C.muted}}>{currentRIR!=null?`RIR ${currentRIR} seleccionado`:"sin seleccionar"}</span>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {[0,1,2,3,4].map(r => (
+                <button key={r} onClick={()=>setCurrentRIR(currentRIR===r?null:r)}
+                  style={{flex:1,padding:"10px 0",background:currentRIR===r?C.orange:C.surface2,border:`2px solid ${currentRIR===r?C.orange:C.border}`,borderRadius:10,color:currentRIR===r?"#fff":C.muted,fontFamily:FONT,fontWeight:700,fontSize:18,cursor:"pointer",transition:"all 0.15s",boxShadow:currentRIR===r?`0 0 12px ${C.orange}66`:"none"}}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       );
     }
@@ -742,7 +734,7 @@ export default function GymTracker() {
   // === DONE ===
   if (view === "done" && done) {
     return phoneWrap(
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,padding:"32px 16px",textAlign:"center"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,padding:"32px 16px",textAlign:"center"}}>
         <div style={{fontSize:52,marginBottom:8}}>🏆</div>
         <div style={{fontSize:28,fontWeight:700,color:C.green,marginBottom:4}}>¡Sesión completada!</div>
         <div style={{color:C.muted,marginBottom:28}}>
@@ -771,7 +763,7 @@ export default function GymTracker() {
           })}
         </div>
         <button onClick={()=>setView("home")}
-          style={{background:C.orange,border:"none",borderRadius:12,padding:"14px 40px",color:"#000",fontFamily:"inherit",fontWeight:700,fontSize:16,cursor:"pointer"}}>
+          style={{background:C.orange,border:"none",borderRadius:12,padding:"14px 40px",color:"#000",fontFamily:FONT,fontWeight:700,fontSize:16,cursor:"pointer"}}>
           Volver al inicio
         </button>
       </div>
@@ -782,11 +774,11 @@ export default function GymTracker() {
   if (view === "history") {
     const sorted = [...sessions].reverse();
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,minHeight:"100vh"}}>
         {desktopNav}
         <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:FONT,display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700,flex:1}}>Historial</div>
           {sessions.length > 0 && (
             <button onClick={()=>{
@@ -794,7 +786,7 @@ export default function GymTracker() {
               sessions.forEach(s=>{ s.exercises?.forEach(ex=>{ ex.sets.forEach((set,i)=>{ rows.push([fmtDate(s.date),s.date?fmtHour(s.date):"",s.endTime?fmtHour(s.endTime):"",`Día ${s.day}`,ex.name,i+1,set.weight,set.reps,set.rir??"",set.skipped?"sí":"no",i===0?(ex.note||""):""]); }); }); });
               const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
               const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="gym-tracker.csv"; a.click();
-            }} style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 14px",color:C.muted,cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+            }} style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 14px",color:C.muted,cursor:"pointer",fontSize:12,fontFamily:FONT}}>
               ⬇ CSV
             </button>
           )}
@@ -875,16 +867,16 @@ export default function GymTracker() {
     const up = parseFloat(change) >= 0;
 
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,minHeight:"100vh"}}>
         {desktopNav}
         <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:FONT,display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700}}>Progreso</div>
         </div>
 
         <select value={selEx} onChange={e=>setSelEx(e.target.value)}
-          style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 14px",color:C.text,fontSize:13,fontFamily:"inherit",marginBottom:20,outline:"none",cursor:"pointer",boxSizing:"border-box"}}>
+          style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 14px",color:C.text,fontSize:13,fontFamily:FONT,marginBottom:20,outline:"none",cursor:"pointer",boxSizing:"border-box"}}>
           {Object.entries(DAYS).map(([day,d]) => (
             <optgroup key={day} label={`Día ${day} — ${d.name}`}>
               {d.exercises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -980,11 +972,11 @@ export default function GymTracker() {
       .map(([w,vol])=>({ week: fmtDate(w+"T12:00:00"), vol: Math.round(vol) }));
 
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,minHeight:"100vh"}}>
         {desktopNav}
         <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:FONT,display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700}}>Estadísticas</div>
         </div>
 
@@ -1072,18 +1064,18 @@ export default function GymTracker() {
     const logMetrics = () => {
       const hasAny = METRICS.some(m=>metricForm[m.id]!=null&&metricForm[m.id]!=="");
       if (!hasAny) return;
-      const entry = { id:Date.now(), date:new Date(metricForm._date||new Date()).toISOString(), ...metricForm };
+      const entry = { id:Date.now(), date:new Date().toISOString(), ...metricForm };
       const updated = [...bodyMetrics, entry];
       saveMetrics(updated);
       setMetricForm({});
     };
 
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,minHeight:"100vh"}}>
         {desktopNav}
         <div style={iW}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:"inherit",display:mob?"block":"none"}}>←</button>
+          <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:mob?20:0,fontFamily:FONT,display:mob?"block":"none"}}>←</button>
           <div style={{fontSize:22,fontWeight:700}}>Medidas corporales</div>
         </div>
         <div style={{display:"grid", gridTemplateColumns: mob?"1fr":"1fr 1fr", gap:32, alignItems:"start"}}>
@@ -1108,12 +1100,6 @@ export default function GymTracker() {
         {/* Registrar medición */}
         <div style={{fontSize:11,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Registrar medición</div>
         <div style={{...card,marginBottom:20}}>
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Fecha</div>
-            <input type="date" value={metricForm._date||new Date().toISOString().slice(0,10)} 
-              onChange={e=>setMetricForm(p=>({...p,_date:e.target.value}))}
-              style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
-          </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
             {METRICS.map(m=>(
               <div key={m.id}>
@@ -1124,7 +1110,7 @@ export default function GymTracker() {
             ))}
           </div>
           <button onClick={logMetrics}
-            style={{width:"100%",background:METRICS.some(m=>metricForm[m.id]!=null&&metricForm[m.id]!=="")?C.orange:C.surface2,border:"none",borderRadius:10,padding:"13px",color:METRICS.some(m=>metricForm[m.id]!=null&&metricForm[m.id]!=="")?C.bg:C.muted,fontFamily:"inherit",fontWeight:700,fontSize:14,cursor:"pointer",transition:"all 0.15s"}}>
+            style={{width:"100%",background:METRICS.some(m=>metricForm[m.id]!=null&&metricForm[m.id]!=="")?C.orange:C.surface2,border:"none",borderRadius:10,padding:"13px",color:METRICS.some(m=>metricForm[m.id]!=null&&metricForm[m.id]!=="")?C.bg:C.muted,fontFamily:FONT,fontWeight:700,fontSize:14,cursor:"pointer",transition:"all 0.15s"}}>
             Guardar medición
           </button>
         </div>
@@ -1136,7 +1122,7 @@ export default function GymTracker() {
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
               {METRICS.map(m=>(
                 <button key={m.id} onClick={()=>setSelMetric(m.id)}
-                  style={{background:selMetric===m.id?C.orange:C.surface2,border:`1px solid ${selMetric===m.id?C.orange:C.border}`,color:selMetric===m.id?C.bg:C.muted,borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
+                  style={{background:selMetric===m.id?C.orange:C.surface2,border:`1px solid ${selMetric===m.id?C.orange:C.border}`,color:selMetric===m.id?C.bg:C.muted,borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer",fontFamily:FONT}}>
                   {m.label}
                 </button>
               ))}
@@ -1207,11 +1193,11 @@ export default function GymTracker() {
     const totalSets = Object.values(manSets).reduce((a,s)=>a+(s?.filter(x=>x.reps).length||0),0);
 
     return (
-      <div style={{fontFamily:"system-ui,sans-serif",background:C.bg,color:C.text,minHeight:"100vh"}}>
+      <div style={{fontFamily:FONT,background:C.bg,color:C.text,minHeight:"100vh"}}>
         {desktopNav}
         <div style={iW}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
-            <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>←</button>
+            <button onClick={()=>setView("home")} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:20,fontFamily:FONT}}>←</button>
             <div style={{fontSize:22,fontWeight:700}}>Registrar sesión pasada</div>
           </div>
 
@@ -1221,7 +1207,7 @@ export default function GymTracker() {
               <div>
                 <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Día</div>
                 <select value={manDay} onChange={e=>{setManDay(+e.target.value); setManSets({});}}
-                  style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}>
+                  style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}>
                   {[1,2,3].map(d=><option key={d} value={d}>Día {d}</option>)}
                 </select>
               </div>
@@ -1239,7 +1225,7 @@ export default function GymTracker() {
             <div>
               <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Fecha</div>
               <input type="date" value={manDate} onChange={e=>setManDate(e.target.value)}
-                style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:"inherit",outline:"none",boxSizing:"border-box"}}/>
+                style={{width:"100%",background:C.surface2,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px",color:C.text,fontSize:14,fontFamily:FONT,outline:"none",boxSizing:"border-box"}}/>
             </div>
           </div>
 
@@ -1270,11 +1256,11 @@ export default function GymTracker() {
                         <input type="number" placeholder="reps" value={s.reps} onChange={e=>updateSet(ex.id,i,"reps",e.target.value)}
                           style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px",color:C.text,fontSize:16,fontFamily:"monospace",textAlign:"center",outline:"none",width:"100%",boxSizing:"border-box"}}/>
                         <button onClick={()=>removeSet(ex.id,i)}
-                          style={{background:"none",border:"none",color:C.red,cursor:"pointer",fontSize:18,padding:0,fontFamily:"inherit"}}>×</button>
+                          style={{background:"none",border:"none",color:C.red,cursor:"pointer",fontSize:18,padding:0,fontFamily:FONT}}>×</button>
                       </div>
                     ))}
                     <button onClick={()=>addSet(ex.id)}
-                      style={{background:"none",border:`1px dashed ${C.border}`,borderRadius:8,padding:"6px",width:"100%",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>
+                      style={{background:"none",border:`1px dashed ${C.border}`,borderRadius:8,padding:"6px",width:"100%",color:C.muted,cursor:"pointer",fontSize:13,fontFamily:FONT}}>
                       + Añadir serie
                     </button>
                   </div>
@@ -1284,7 +1270,7 @@ export default function GymTracker() {
           })}
 
           <button onClick={saveManual} disabled={!totalSets}
-            style={{width:"100%",marginTop:16,background:totalSets?C.orange:C.surface2,border:"none",borderRadius:10,padding:"14px",color:totalSets?"#000":C.muted,fontFamily:"inherit",fontWeight:700,fontSize:15,cursor:totalSets?"pointer":"not-allowed"}}>
+            style={{width:"100%",marginTop:16,background:totalSets?C.orange:C.surface2,border:"none",borderRadius:10,padding:"14px",color:totalSets?"#000":C.muted,fontFamily:FONT,fontWeight:700,fontSize:15,cursor:totalSets?"pointer":"not-allowed"}}>
             {totalSets ? `Guardar sesión (${totalSets} series)` : "Añade al menos una serie"}
           </button>
         </div>
