@@ -722,10 +722,11 @@ export default function GymTracker() {
               </button>
               <button onClick={skipExercise}
                 style={{width:"100%",background:"none",border:`1px solid ${C.border}`,borderRadius:10,padding:"10px",color:C.muted,fontFamily:FONT,fontSize:13,cursor:"pointer",marginBottom:8}}>
-                Saltar ejercicio (máquina ocupada)
+              Saltar ejercicio (máquina ocupada)
               </button>
             </div>
           )}
+        </div>
       );
     }
   }
